@@ -1,4 +1,7 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram import Update
+from telegram.ext import ContextTypes
+
 import os
 
 @app.route('/')
@@ -10,7 +13,8 @@ user_message_counts = {}
 MAX_MESSAGES = 20
 OWNER_ID = int(os.environ.get("OWNER_ID", "12345678"))
 
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     await update.message.reply_text(
         "Welcome to the Anonymous Messaging Bot!\n\n"
         "You can send up to 20 anonymous messages to the bot owner.\n"
