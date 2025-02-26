@@ -1,8 +1,5 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import os
-from flask import Flask
-
-app = Flask(__name__)
 
 @app.route('/')
 def index():
@@ -69,9 +66,6 @@ def main():
     application.run_polling()
 
 if __name__ == "__main__":
-    # Use a different port for Flask to avoid conflict
-    port = int(os.environ.get("FLASK_PORT", 8081))
-    app.run(host="0.0.0.0", port=port)
     
     # Start the bot
     main()
