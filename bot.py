@@ -26,15 +26,15 @@ application = Application.builder().token(TOKEN).updater(None).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Welcome to the Anonymous Messaging Bot!\n\n"
-        "You can send up to 20 anonymous messages to the bot owner.\n"
-        "Just type your message and send it."
+        "Тебя приветствует бот анонимного самонаблюдения!\n\n"
+        "Ты можешь послать мне до 20 сообщений.\n"
+        "Пиши и отсылай, не стесняйся."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Just type your message and send it to submit anonymously.\n"
-        "You can send up to 20 messages."
+        "Для анонимной отсылки материалов пошли мне сообщение.\n"
+        "Твой лимит - 20 сообщений (постарайся в него уложиться =) )."
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -47,7 +47,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_message_counts[user_id] = 0
     
     if user_message_counts[user_id] >= MAX_MESSAGES:
-        await update.message.reply_text("You've reached the maximum limit of 20 messages.")
+        await update.message.reply_text("Больше не пиши.")
         return
     
     user_message_counts[user_id] += 1
@@ -59,7 +59,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     await update.message.reply_text(
-        f"Your anonymous message has been sent! ({user_message_counts[user_id]}/{MAX_MESSAGES} messages used)"
+        f"Ваша рукопись прочитана! ({user_message_counts[user_id]}/{MAX_MESSAGES} рукописей осталось)"
     )
 
 # Set up handlers
