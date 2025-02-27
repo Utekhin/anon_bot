@@ -16,8 +16,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "You can send up to 20 anonymous messages to the bot owner.\n"
         "Just type your message and send it."
     )
-
-async def help_command(update, context):
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Just type your message and send it to submit anonymously.\n"
         "You can send up to 20 messages."
