@@ -1,7 +1,14 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from flask import Flask, request, Response
 import os
-from flask import Flask, request
+import logging
+
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__)
@@ -11,11 +18,10 @@ user_message_counts = {}
 MAX_MESSAGES = 20
 OWNER_ID = int(os.environ.get("OWNER_ID", "12345678"))
 TOKEN = os.environ.get("BOT_TOKEN")
-PORT = int(os.environ.get("PORT", 8080))
 APP_URL = os.environ.get("APP_URL", "https://your-app-url.koyeb.app")
 
-# Initialize bot application
-application = Application.builder().token(TOKEN).build()
+# Initialize bot application with updater=None for webhook mode
+application = Application.builder().token(TOKEN).updater(None).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -60,41 +66,61 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# Flask routes for webhook
+# Flask routes
 @app.route('/')
 def index():
     return 'Bot is running!'
 
-@app.route(f'/{TOKEN}', methods=['POST'])
-async def webhook():
+@app.route('/telegram', methods=['POST'])
+async def telegram_webhook():
     """Handle incoming webhook updates from Telegram"""
-    await application.update_queue.put(
-        Update.de_json(request.get_json(force=True), application.bot)
-    )
-    return 'OK'
+    try:
+        update = Update.de_json(data=request.get_json(force=True), bot=application.bot)
+        await application.process_update(update)
+        return Response(status=200)
+    except Exception as e:
+        logger.error(f"Error processing update: {e}")
+        return Response(status=500)
 
-# Set webhook
 @app.route('/set_webhook')
-def set_webhook():
-    webhook_url = f"{APP_URL}/{TOKEN}"
-    success = application.bot.set_webhook(webhook_url)
-    if success:
-        return f"Webhook set to {webhook_url}"
-    else:
-        return "Failed to set webhook"
+async def set_webhook():
+    """Set the Telegram webhook"""
+    webhook_url = f"{APP_URL}/telegram"
+    try:
+        await application.bot.set_webhook(url=webhook_url)
+        logger.info(f"Webhook set to {webhook_url}")
+        return f"Webhook successfully set to {webhook_url}"
+    except Exception as e:
+        logger.error(f"Failed to set webhook: {e}")
+        return f"Failed to set webhook: {str(e)}"
 
-# Remove webhook
 @app.route('/remove_webhook')
-def remove_webhook():
-    success = application.bot.delete_webhook()
-    if success:
-        return "Webhook removed"
-    else:
-        return "Failed to remove webhook"
+async def remove_webhook():
+    """Remove the Telegram webhook"""
+    try:
+        await application.bot.delete_webhook()
+        logger.info("Webhook removed")
+        return "Webhook successfully removed"
+    except Exception as e:
+        logger.error(f"Failed to remove webhook: {e}")
+        return f"Failed to remove webhook: {str(e)}"
+
+# Initialize the application
+@app.before_first_request
+async def initialize():
+    """Initialize the application before the first request"""
+    try:
+        # Start the application
+        await application.initialize()
+        # Set the webhook
+        webhook_url = f"{APP_URL}/telegram"
+        await application.bot.set_webhook(url=webhook_url)
+        logger.info(f"Webhook set to {webhook_url}")
+    except Exception as e:
+        logger.error(f"Failed to initialize application: {e}")
 
 if __name__ == '__main__':
-    # Set the webhook before starting the Flask server
-    application.bot.set_webhook(f"{APP_URL}/{TOKEN}")
-    
-    # Start the Flask server
-    app.run(host='0.0.0.0', port=PORT)
+    # Run the Flask app
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
