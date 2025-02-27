@@ -4,10 +4,6 @@ from telegram.ext import ContextTypes
 
 import os
 
-@app.route('/')
-def index():
-    return 'Bot is running!'
-
 # Dictionary to store user message counts
 user_message_counts = {}
 MAX_MESSAGES = 20
