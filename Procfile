@@ -1,4 +1,5 @@
-web: python -m telegram.ext._application
+web: gunicorn flask_app:app & python run_bot.py
+
 
 
 
