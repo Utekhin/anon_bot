@@ -3,6 +3,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from flask import Flask, request, Response
 import os
 import logging
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -66,61 +67,89 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+# Initialize application (run once at startup)
+def initialize_application():
+    """Initialize the application at startup"""
+    try:
+        # Create a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # Initialize the application
+        loop.run_until_complete(application.initialize())
+        
+        # Set the webhook
+        webhook_url = f"{APP_URL}/telegram"
+        loop.run_until_complete(application.bot.set_webhook(url=webhook_url))
+        
+        logger.info(f"Application initialized and webhook set to {webhook_url}")
+        
+        # Close the loop
+        loop.close()
+    except Exception as e:
+        logger.error(f"Failed to initialize application: {e}")
+
+# Run initialization at startup
+initialize_application()
+
 # Flask routes
 @app.route('/')
 def index():
     return 'Bot is running!'
 
 @app.route('/telegram', methods=['POST'])
-async def telegram_webhook():
+def telegram_webhook():
     """Handle incoming webhook updates from Telegram"""
     try:
-        update = Update.de_json(data=request.get_json(force=True), bot=application.bot)
-        await application.process_update(update)
+        # Get the update from the request
+        update_data = request.get_json(force=True)
+        
+        # Create a new event loop for processing the update
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # Process the update
+        update = Update.de_json(data=update_data, bot=application.bot)
+        loop.run_until_complete(application.process_update(update))
+        
+        # Close the loop
+        loop.close()
+        
         return Response(status=200)
     except Exception as e:
         logger.error(f"Error processing update: {e}")
         return Response(status=500)
 
 @app.route('/set_webhook')
-async def set_webhook():
+def set_webhook():
     """Set the Telegram webhook"""
     webhook_url = f"{APP_URL}/telegram"
     try:
-        await application.bot.set_webhook(url=webhook_url)
-        logger.info(f"Webhook set to {webhook_url}")
+        # Use a synchronous approach
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        success = loop.run_until_complete(application.bot.set_webhook(url=webhook_url))
+        loop.close()
         return f"Webhook successfully set to {webhook_url}"
     except Exception as e:
-        logger.error(f"Failed to set webhook: {e}")
         return f"Failed to set webhook: {str(e)}"
 
 @app.route('/remove_webhook')
-async def remove_webhook():
+def remove_webhook():
     """Remove the Telegram webhook"""
     try:
-        await application.bot.delete_webhook()
-        logger.info("Webhook removed")
+        # Use a synchronous approach
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        success = loop.run_until_complete(application.bot.delete_webhook())
+        loop.close()
         return "Webhook successfully removed"
     except Exception as e:
-        logger.error(f"Failed to remove webhook: {e}")
         return f"Failed to remove webhook: {str(e)}"
-
-# Initialize the application
-@app.before_first_request
-async def initialize():
-    """Initialize the application before the first request"""
-    try:
-        # Start the application
-        await application.initialize()
-        # Set the webhook
-        webhook_url = f"{APP_URL}/telegram"
-        await application.bot.set_webhook(url=webhook_url)
-        logger.info(f"Webhook set to {webhook_url}")
-    except Exception as e:
-        logger.error(f"Failed to initialize application: {e}")
 
 if __name__ == '__main__':
     # Run the Flask app
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
+
 
