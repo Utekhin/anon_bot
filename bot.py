@@ -17,9 +17,12 @@ app = Flask(__name__)
 # Dictionary to store user message counts
 user_message_counts = {}
 MAX_MESSAGES = 20
-OWNER_ID = int(os.environ.get("OWNER_ID", "12345678"))
+OWNER_ID = int(os.environ.get("OWNER_ID", 0))
 TOKEN = os.environ.get("BOT_TOKEN")
-APP_URL = os.environ.get("APP_URL", "https://your-app-url.koyeb.app")
+APP_URL = os.environ.get("APP_URL")
+
+if not TOKEN or not APP_URL or not OWNER_ID:
+    raise ValueError("BOT_TOKEN, APP_URL, and OWNER_ID must be set in environment variables!")
 
 # Initialize bot application with updater=None for webhook mode
 application = Application.builder().token(TOKEN).updater(None).build()
